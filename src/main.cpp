@@ -7,22 +7,23 @@
 
 #define wheel_radius 1.25    //inches
 #define robot_radius 3.639   // inches
-#define wheel1_theta 0.0     // degrees
+#define wheel1_theta 0     // degrees
 #define wheel2_theta 120.0     // degrees
-#define wheel3_theta 242.0     // degrees
+#define wheel3_theta 240.0     // degrees
 #define Pi 3.1415926535897
 #define robot_weight 1.079        //kilograms
 #define countsperinch 40.48    //counts per inch
 #define countsperrotation 318.0 //counts per rotation
-#define motormaxrpm 120.0
+#define motormaxrpm 150
+#define momentumfactor 10
 
 #define motor_torque_weight 2.0
 
 
 //PID Constants opne to be tweaked
 #define Pid_P_Constant  .75
-#define Pid_D_Constant  .5
-#define Pid_I_Constant  .1
+#define Pid_D_Constant  .05
+#define Pid_I_Constant  1.3
 
 
 
@@ -52,14 +53,14 @@ class robot{
         
         wheelspeedcalc(velocity_x,velocity_y, 0);
 
-        encoder1dstcount=(((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch;
-        encoder2dstcount=(((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch;
-        encoder3dstcount=(((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch;
+        encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
+        encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
+        encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
         
 
         pidreset();
 
-        while ((encoder1.Counts()<encoder1dstcount)&&(encoder2.Counts()<encoder2dstcount)&&(encoder3.Counts()<encoder3dstcount))
+        while ((encoder1.Counts()<=encoder1dstcount)||(encoder2.Counts()<=encoder2dstcount)||(encoder3.Counts()<=encoder3dstcount))
         {
             LCD.Clear();
             motor1.SetPercent(motor1_voltage);
@@ -68,8 +69,9 @@ class robot{
 
 
             pidcalc();
-            Sleep(5);
+            
             writefuncs();
+            Sleep(10);
         }
         motor1.SetPercent(0);
         motor2.SetPercent(0);
@@ -229,7 +231,14 @@ void ERCMain()
 {
     LCD.WriteLine("program started");
     robot robot;
-    robot.move(35,90,10);
+    robot.move(28,180,10);
+    robot.move(12,0,10);
+    robot.move(10.5,20,10);
+    robot.move(27,90,10);
+    robot.move(2,0,5);
+    robot.move(.5,180,5);
+    robot.move(25,275,5);
+
 
     while (1)
     {}
