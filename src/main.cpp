@@ -6,13 +6,13 @@
 
 
 #define wheel_radius 1.25    //inches
-#define robot_radius 3.639   // inches
+#define robot_radius 3.625   // inches
 #define wheel1_theta 0     // degrees
 #define wheel2_theta 120.0     // degrees
 #define wheel3_theta 240.0     // degrees
 #define Pi 3.1415926535897
 #define robot_weight 1.079        //kilograms
-#define countsperinch 40.48    //counts per inch
+#define countsperinch 40.490175226    //counts per inch
 #define countsperrotation 318.0 //counts per rotation
 #define motormaxrpm 150
 #define momentumfactor 10
@@ -22,7 +22,7 @@
 
 //PID Constants opne to be tweaked
 #define Pid_P_Constant  .75
-#define Pid_D_Constant  .05
+#define Pid_D_Constant  .1
 #define Pid_I_Constant  1.3
 
 
@@ -35,6 +35,8 @@ FEHMotor motor3(FEHMotor::Motor0, 9.0);
 DigitalEncoder encoder1(FEHIO::Pin13);
 DigitalEncoder encoder2(FEHIO::Pin14);
 DigitalEncoder encoder3(FEHIO::Pin10);
+//CDS cell
+AnalogInputPin cds_cell(FEHIO::Pin8);
 
 
 
@@ -192,6 +194,40 @@ class robot{
     
         last_time_pid=millis();
     }
+    void turn(float degree, float time)
+    {
+        encoder1.ResetCounts();
+        encoder2.ResetCounts();
+        encoder3.ResetCounts();
+
+        radpersec=((Pi*degree)/180)/time;
+
+        wheelspeedcalc(0,0,radpersec);
+
+        encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
+        encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
+        encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
+
+        pidreset();
+
+        while ((encoder1.Counts()<=encoder1dstcount)||(encoder2.Counts()<=encoder2dstcount)||(encoder3.Counts()<=encoder3dstcount))
+        {
+            LCD.Clear();
+            motor1.SetPercent(motor1_voltage);
+            motor2.SetPercent(motor2_voltage);
+            motor3.SetPercent(motor3_voltage);
+
+
+            pidcalc();
+            
+            writefuncs();
+            Sleep(10);
+        }
+        motor1.SetPercent(0);
+        motor2.SetPercent(0);
+        motor3.SetPercent(0);
+
+    }
     //Purely a function for testing values
     void writefuncs()
     {
@@ -219,6 +255,7 @@ class robot{
     float pid_Pterm1, pid_Iterm1, pid_Dterm1, pid_Pterm2, pid_Iterm2, pid_Dterm2, pid_Pterm3, pid_Iterm3, pid_Dterm3;
     float pid_sumoferrors1, pid_sumoferrors2, pid_sumoferrors3;
     float base_voltage1, base_voltage2, base_voltage3;
+    float radpersec;
 };
 
 
@@ -231,16 +268,41 @@ void ERCMain()
 {
     LCD.WriteLine("program started");
     robot robot;
-    robot.move(28,180,10);
-    robot.move(12,0,10);
-    robot.move(10.5,20,10);
-    robot.move(27,90,10);
-    robot.move(2,0,5);
-    robot.move(.5,180,5);
-    robot.move(25,275,5);
+    
+    while ((cds_cell.Value())>1.2);
+    {
+        Sleep(50);
+    }
+    robot.move(2,300,10);
+    robot.move(1,75,11);
+    robot.turn(-87.5,.75);
+    robot.move(36,180,11);
+    robot.move(10,180,5);
+    robot.move(3,0,5);
+    robot.turn(90,1);
+
+    while (cds_cell.Value()>1.3)
+    {
+        Sleep(10);
+    }
+    if (cds_cell.Value()>1.2)
+    {
+        LCD.WriteLine("blue");
+        LCD.WriteLine(cds_cell.Value());
+    }
+    else if(cds_cell.Value()<=1.2)
+    {
+        LCD.WriteLine("Red");
+        LCD.WriteLine(cds_cell.Value());
+    }
+
 
 
     while (1)
-    {}
+    {
+
+    }
+
+    
     
 }
