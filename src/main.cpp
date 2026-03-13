@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include "FEHServo.h"
 
 
 #define wheel_radius 1.25    //inches
@@ -37,13 +38,15 @@ DigitalEncoder encoder2(FEHIO::Pin14);
 DigitalEncoder encoder3(FEHIO::Pin10);
 //CDS cell
 AnalogInputPin cds_cell(FEHIO::Pin8);
+//Servo
+
 
 
 
 
 class robot{
     public:
-    void move(float dist, float angle, float speed) 
+    void move(float dist, float angle, float speed)
     {
         encoder1.ResetCounts();
         encoder2.ResetCounts();
@@ -52,13 +55,13 @@ class robot{
         velocity_x=cos((angle/180.0)*Pi)*speed;
         velocity_y=sin((angle/180.0)*Pi)*speed;
 
-        
+       
         wheelspeedcalc(velocity_x,velocity_y, 0);
 
         encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
         encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
         encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
-        
+       
 
         pidreset();
 
@@ -71,7 +74,7 @@ class robot{
 
 
             pidcalc();
-            
+           
             writefuncs();
             Sleep(10);
         }
@@ -79,11 +82,11 @@ class robot{
         motor2.SetPercent(0);
         motor3.SetPercent(0);
 
-    
+   
     }
     void wheelspeedcalc(float vx, float vy, float botrot)
     {
-        
+       
         wheelspeedrpm1 = ((sin((wheel1_theta/360.0)*2.0*Pi)*vx+-1.0*cos((wheel1_theta/360.0)*2.0*Pi)*vy+(-1.0*robot_radius*botrot))/wheel_radius)*(60.0/(2.0*Pi));
         wheelspeedrpm2 = ((sin((wheel2_theta/360.0)*2*Pi)*vx+-1.0*cos((wheel2_theta/360.0)*2.0*Pi)*vy+(-1.0*robot_radius*botrot))/wheel_radius)*(60.0/(2.0*Pi));
         wheelspeedrpm3 = ((sin((wheel3_theta/360.0)*2.0*Pi)*vx+-1.0*cos((wheel3_theta/360.0)*2.0*Pi)*vy+(-1.0*robot_radius*botrot))/wheel_radius)*(60.0/(2.0*Pi));
@@ -127,7 +130,7 @@ class robot{
         pid_Dterm1=Pid_D_Constant*((pid_error1-pid_lasterror1)/(time_diff_pid*.001));
         pid_Dterm2=Pid_D_Constant*((pid_error2-pid_lasterror2)/(time_diff_pid*.001));
         pid_Dterm3=Pid_D_Constant*((pid_error3-pid_lasterror3)/(time_diff_pid*.001));
-        
+       
         if (base_voltage1>=0)
         {
             motor1_voltage=pid_Pterm1+pid_Iterm1+pid_Dterm1+base_voltage1;
@@ -168,7 +171,7 @@ class robot{
     void pidreset()
     {
         time_next_pid=0;
-        
+       
 
         encoder1.ResetCounts();
         encoder2.ResetCounts();
@@ -191,7 +194,7 @@ class robot{
         base_voltage2=motor2_voltage;
         base_voltage3=motor3_voltage;
 
-    
+   
         last_time_pid=millis();
     }
     void turn(float degree, float time)
@@ -219,7 +222,7 @@ class robot{
 
 
             pidcalc();
-            
+           
             writefuncs();
             Sleep(10);
         }
@@ -244,7 +247,7 @@ class robot{
     float motor1_voltage, motor2_voltage, motor3_voltage;   //in percent
     float wheelspeedrpm1, wheelspeedrpm2, wheelspeedrpm3;    // in rads/sec
     float encoder1dstcount, encoder2dstcount, encoder3dstcount;
-    float velocity_x, velocity_y, rotation_rad;   // in inches per second and rotation of robot is in 
+    float velocity_x, velocity_y, rotation_rad;   // in inches per second and rotation of robot is in
     unsigned long int time_next_pid, last_time_pid, time_diff_pid;
     int encoder1last, encoder2last, encoder3last;
     int encoder1now, encoder2now, encoder3now;
@@ -268,38 +271,64 @@ void ERCMain()
 {
     LCD.WriteLine("program started");
     robot robot;
-    
+   
     while ((cds_cell.Value())>1.2);
     {
         Sleep(50);
     }
     robot.move(2,300,10);
     robot.move(1,75,11);
-    robot.turn(-90.5,.75);
+    robot.turn(-83.5,.75);
     robot.move(36,180,11);
     robot.move(10,180,5);
-    robot.move(6,0,6);
-    robot.turn(-90, .75);
-    
+    robot.move(4.75,0,6);
+    robot.turn(-80, .75);
+   
     robot.move(6,180,5);
     robot.move(15.75,0,11);
 
 
-    while (cds_cell.Value()>1.3)
+    robot.move(7,45,7);
+    while (!RCS.isWindowOpen())
+    {
+        robot.move(1,180,5);
+    }
+    robot.move(2,270,7);
+
+    
+
+
+    while (cds_cell.Value()>2.2)
     {
         Sleep(10);
     }
-    if (cds_cell.Value()>1.2)
+    if (cds_cell.Value()>1.4)
     {
         LCD.WriteLine("blue");
         LCD.WriteLine(cds_cell.Value());
-        robot.move(9,20,7);
+        Sleep(10.0);
+        robot.move(5.5,20,6);
+        robot.move(6,200,7);
+        robot.move(18,180,7);
+        robot.move(4,0,5);
+        robot.move(25,90,10);
+        robot.move(4,180,5);
+        robot.move(4,0,5);
+        robot.move(13,90,10);
     }
-    else if(cds_cell.Value()<=1.2)
+    else if(cds_cell.Value()<=1.4)
     {
         LCD.WriteLine("Red");
         LCD.WriteLine(cds_cell.Value());
-        robot.move(9,340,7);
+        Sleep(10.0);
+        robot.move(5.5,340,6);
+        robot.move(6,160,7);
+        robot.move(18,180,7);
+        robot.move(4,0,5);
+        robot.move(25,90,10);
+        robot.move(4,180,5);
+        robot.move(4,0,5);
+        robot.move(13,90,10);
     }
 
 
@@ -309,6 +338,7 @@ void ERCMain()
 
     }
 
-    
-    
+   
+   
 }
+
