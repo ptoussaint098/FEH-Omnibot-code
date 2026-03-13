@@ -275,11 +275,15 @@ void ERCMain()
     }
     robot.move(2,300,10);
     robot.move(1,75,11);
-    robot.turn(-87.5,.75);
+    robot.turn(-90.5,.75);
     robot.move(36,180,11);
     robot.move(10,180,5);
-    robot.move(3,0,5);
-    robot.turn(90,1);
+    robot.move(6,0,6);
+    robot.turn(-90, .75);
+    
+    robot.move(6,180,5);
+    robot.move(15.75,0,11);
+
 
     while (cds_cell.Value()>1.3)
     {
@@ -289,11 +293,13 @@ void ERCMain()
     {
         LCD.WriteLine("blue");
         LCD.WriteLine(cds_cell.Value());
+        robot.move(9,20,7);
     }
     else if(cds_cell.Value()<=1.2)
     {
         LCD.WriteLine("Red");
         LCD.WriteLine(cds_cell.Value());
+        robot.move(9,340,7);
     }
 
 
