@@ -25,6 +25,9 @@
 #define Pid_P_Constant  .75
 #define Pid_D_Constant  .1
 #define Pid_I_Constant  1.3
+//servo mins and maxes
+#define SERVO_MIN 500
+#define SERVO_MAX 1424
 
 
 
@@ -39,7 +42,7 @@ DigitalEncoder encoder3(FEHIO::Pin10);
 //CDS cell
 AnalogInputPin cds_cell(FEHIO::Pin8);
 //Servo
-
+FEHServo arm(FEHServo::Servo0);
 
 
 
@@ -76,11 +79,8 @@ class robot{
             pidcalc();
            
             writefuncs();
-            Sleep(10);
+            Sleep(5);
         }
-        motor1.SetPercent(0);
-        motor2.SetPercent(0);
-        motor3.SetPercent(0);
 
    
     }
@@ -231,6 +231,42 @@ class robot{
         motor3.SetPercent(0);
 
     }
+    void armmove(float angle, float time_to_complete)
+    {
+        LCD.WriteLine(arm_angle);
+        LCD.WriteLine(angle);
+        waitime=time_to_complete/(abs(angle-arm_angle));
+        if (arm_angle<angle)
+        {
+            while (arm_angle<angle)
+            {
+                arm_angle+=1.0;
+                arm.SetDegree(arm_angle);
+                LCD.WriteLine(waitime);
+                
+                Sleep(waitime);
+            }
+            
+        }
+        else
+        {
+             while (arm_angle>angle)
+            {
+                arm_angle-=1.0;
+                arm.SetDegree(arm_angle);
+                Sleep(waitime);
+                LCD.WriteLine(waitime);
+            }
+
+        }
+        
+    }
+    void stopmot()
+    {
+        motor1.SetPercent(0.0);
+        motor2.SetPercent(0.0);
+        motor3.SetPercent(0.0);
+    }
     //Purely a function for testing values
     void writefuncs()
     {
@@ -259,6 +295,9 @@ class robot{
     float pid_sumoferrors1, pid_sumoferrors2, pid_sumoferrors3;
     float base_voltage1, base_voltage2, base_voltage3;
     float radpersec;
+    int index;
+    float arm_angle=0;
+    float waitime;
 };
 
 
@@ -269,70 +308,38 @@ class robot{
 
 void ERCMain()
 {
+    arm.SetMax(SERVO_MAX);
+    arm.SetMin(SERVO_MIN);
     LCD.WriteLine("program started");
     robot robot;
+    
+    
    
     while ((cds_cell.Value())>1.2);
     {
         Sleep(50);
     }
     robot.move(2,300,10);
-    robot.move(1,75,11);
-    robot.turn(-83.5,.75);
-    robot.move(36,180,11);
-    robot.move(10,180,5);
-    robot.move(4.75,0,6);
-    robot.turn(-80, .75);
-   
-    robot.move(6,180,5);
-    robot.move(15.75,0,11);
-
-
-    robot.move(7,45,7);
-    while (!RCS.isWindowOpen())
-    {
-        robot.move(1,180,5);
-    }
-    robot.move(2,270,7);
+    robot.move(17.5,135,7); 
+    robot.armmove(42,.75);
+    robot.stopmot();
+    robot.move(3,90,5);
+    robot.stopmot();
+    robot.move(7.8,0,12);
+    robot.stopmot();
+    robot.turn(-150,1.5);
+    robot.move(.5,300,5);
+    robot.stopmot();
+    robot.move(1,60,5);
+    robot.stopmot();
+    robot.armmove(0,.5);
+    robot.move(8,240,5);
+    
+    robot.stopmot();
 
     
 
-
-    while (cds_cell.Value()>2.2)
-    {
-        Sleep(10);
-    }
-    if (cds_cell.Value()>1.4)
-    {
-        LCD.WriteLine("blue");
-        LCD.WriteLine(cds_cell.Value());
-        Sleep(10.0);
-        robot.move(5.5,20,6);
-        robot.move(6,200,7);
-        robot.move(18,180,7);
-        robot.move(4,0,5);
-        robot.move(25,90,10);
-        robot.move(4,180,5);
-        robot.move(4,0,5);
-        robot.move(13,90,10);
-    }
-    else if(cds_cell.Value()<=1.4)
-    {
-        LCD.WriteLine("Red");
-        LCD.WriteLine(cds_cell.Value());
-        Sleep(10.0);
-        robot.move(5.5,340,6);
-        robot.move(6,160,7);
-        robot.move(18,180,7);
-        robot.move(4,0,5);
-        robot.move(25,90,10);
-        robot.move(4,180,5);
-        robot.move(4,0,5);
-        robot.move(13,90,10);
-    }
-
-
-
+    
     while (1)
     {
 
