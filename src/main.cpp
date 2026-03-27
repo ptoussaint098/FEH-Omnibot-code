@@ -23,8 +23,8 @@
 
 //PID Constants opne to be tweaked
 #define Pid_P_Constant  .75
-#define Pid_D_Constant  .1
-#define Pid_I_Constant  1.3
+#define Pid_D_Constant  .2
+#define Pid_I_Constant  .2
 //servo mins and maxes
 #define SERVO_MIN 500
 #define SERVO_MAX 1424
@@ -64,11 +64,12 @@ class robot{
         encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
         encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
         encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
+
        
 
         pidreset();
 
-        while ((encoder1.Counts()<=encoder1dstcount)||(encoder2.Counts()<=encoder2dstcount)||(encoder3.Counts()<=encoder3dstcount))
+        while ((encoder1.Counts()<=encoder1dstcount)&&(encoder2.Counts()<=encoder2dstcount)&&(encoder3.Counts()<=encoder3dstcount))
         {
             LCD.Clear();
             motor1.SetPercent(motor1_voltage);
@@ -77,9 +78,9 @@ class robot{
 
 
             pidcalc();
-           
+
             writefuncs();
-            Sleep(5);
+           
         }
 
    
@@ -233,8 +234,6 @@ class robot{
     }
     void armmove(float angle, float time_to_complete)
     {
-        LCD.WriteLine(arm_angle);
-        LCD.WriteLine(angle);
         waitime=time_to_complete/(abs(angle-arm_angle));
         if (arm_angle<angle)
         {
@@ -276,6 +275,9 @@ class robot{
         LCD.WriteLine(encoder1last);
         LCD.WriteLine(encoder2last);
         LCD.WriteLine(encoder3last);
+        LCD.WriteLine(encoder1dstcount);
+        LCD.WriteLine(encoder2dstcount);
+        LCD.WriteLine(encoder3dstcount);
 
     }
     private:
@@ -319,27 +321,26 @@ void ERCMain()
     {
         Sleep(50);
     }
-    robot.move(2,300,10);
-    robot.move(17.5,135,7); 
-    robot.armmove(42,.75);
+    robot.move(.3,300,10);
+
+    robot.move(19.4,120,6);
     robot.stopmot();
-    robot.move(3,90,5);
-    robot.stopmot();
-    robot.move(7.8,0,12);
-    robot.stopmot();
-    robot.turn(-150,1.5);
-    robot.move(.5,300,5);
-    robot.stopmot();
-    robot.move(1,60,5);
-    robot.stopmot();
-    robot.armmove(0,.5);
-    robot.move(8,240,5);
     
+    robot.turn(120,1.5);
+    robot.armmove(39,1);
     robot.stopmot();
 
-    
+    robot.move(5,60,5);
+    robot.stopmot();
 
-    
+    robot.armmove(10,.5);
+
+    robot.move(14.25,220,8);
+    robot.stopmot();
+
+    robot.turn(150,2);
+
+
     while (1)
     {
 
