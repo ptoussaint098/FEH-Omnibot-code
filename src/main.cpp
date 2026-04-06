@@ -4,6 +4,7 @@
 #include <math.h>
 #include <time.h>
 #include "FEHServo.h"
+#include "FEHSD.h"
 
 
 #define wheel_radius 1.25    //inches
@@ -22,9 +23,9 @@
 
 
 //PID Constants opne to be tweaked
-#define Pid_P_Constant  .75
-#define Pid_D_Constant  .2
-#define Pid_I_Constant  .2
+#define Pid_P_Constant  1
+#define Pid_D_Constant  0
+#define Pid_I_Constant  0
 //servo mins and maxes
 #define SERVO_MIN 500
 #define SERVO_MAX 1424
@@ -43,6 +44,8 @@ DigitalEncoder encoder3(FEHIO::Pin10);
 AnalogInputPin cds_cell(FEHIO::Pin8);
 //Servo
 FEHServo arm(FEHServo::Servo0);
+FEHServo compost(FEHServo::Servo7);
+
 
 
 
@@ -61,9 +64,22 @@ class robot{
        
         wheelspeedcalc(velocity_x,velocity_y, 0);
 
-        encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
-        encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
-        encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch)-momentumfactor;
+        encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch);
+        encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch);
+        encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch);
+
+        if (encoder1dstcount==0)
+        {
+            encoder1dstcount+=15;
+        }
+        else if (encoder2dstcount==0)
+        {
+            encoder2dstcount+=15;
+        }
+        else if (encoder3dstcount==0)
+        {
+            encoder3dstcount+=15;
+        }
 
        
 
@@ -71,13 +87,20 @@ class robot{
 
         while ((encoder1.Counts()<=encoder1dstcount)&&(encoder2.Counts()<=encoder2dstcount)&&(encoder3.Counts()<=encoder3dstcount))
         {
-            LCD.Clear();
+           
             motor1.SetPercent(motor1_voltage);
             motor2.SetPercent(motor2_voltage);
             motor3.SetPercent(motor3_voltage);
 
 
+            Sleep(5);
+
+
             pidcalc();
+
+           
+
+
 
             writefuncs();
            
@@ -111,6 +134,11 @@ class robot{
         actual_wheel_speed1=((encoder1now-encoder1last)/countsperinch)/(time_diff_pid*.001);
         actual_wheel_speed2=((encoder2now-encoder2last)/countsperinch)/(time_diff_pid*.001);
         actual_wheel_speed3=((encoder3now-encoder3last)/countsperinch)/(time_diff_pid*.001);
+
+        actualwheelspeedrpm1=(actual_wheel_speed1*60.0)/(2*Pi);
+        actualwheelspeedrpm2=(actual_wheel_speed2*60.0)/(2*Pi);
+        actualwheelspeedrpm3=(actual_wheel_speed3*60.0)/(2*Pi);
+
 
         pid_error1=((fabs(wheelspeedrpm1)*Pi*wheel_radius*2.0)/60.0)-actual_wheel_speed1;
         pid_error2=((fabs(wheelspeedrpm2)*Pi*wheel_radius*2.0)/60.0)-actual_wheel_speed2;
@@ -212,24 +240,39 @@ class robot{
         encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
         encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
 
+        if (encoder1dstcount<15)
+        {
+            encoder1dstcount+=15;
+        }
+        else if (encoder2dstcount<15)
+        {
+            encoder2dstcount+=15;
+        }
+        else if (encoder3dstcount<15)
+        {
+            encoder3dstcount+=15;
+        }
+
         pidreset();
 
-        while ((encoder1.Counts()<=encoder1dstcount)||(encoder2.Counts()<=encoder2dstcount)||(encoder3.Counts()<=encoder3dstcount))
+        while ((encoder1.Counts()<=encoder1dstcount)&&(encoder2.Counts()<=encoder2dstcount)&&(encoder3.Counts()<=encoder3dstcount))
         {
-            LCD.Clear();
+           
             motor1.SetPercent(motor1_voltage);
             motor2.SetPercent(motor2_voltage);
             motor3.SetPercent(motor3_voltage);
 
+            Sleep(5);
 
             pidcalc();
+
+
+           
            
             writefuncs();
-            Sleep(10);
+           
         }
-        motor1.SetPercent(0);
-        motor2.SetPercent(0);
-        motor3.SetPercent(0);
+       
 
     }
     void armmove(float angle, float time_to_complete)
@@ -242,10 +285,10 @@ class robot{
                 arm_angle+=1.0;
                 arm.SetDegree(arm_angle);
                 LCD.WriteLine(waitime);
-                
+               
                 Sleep(waitime);
             }
-            
+           
         }
         else
         {
@@ -258,7 +301,7 @@ class robot{
             }
 
         }
-        
+       
     }
     void stopmot()
     {
@@ -269,15 +312,20 @@ class robot{
     //Purely a function for testing values
     void writefuncs()
     {
-        LCD.WriteLine(motor1_voltage);
-        LCD.WriteLine(motor2_voltage);
-        LCD.WriteLine(motor3_voltage);
-        LCD.WriteLine(encoder1last);
-        LCD.WriteLine(encoder2last);
-        LCD.WriteLine(encoder3last);
-        LCD.WriteLine(encoder1dstcount);
-        LCD.WriteLine(encoder2dstcount);
-        LCD.WriteLine(encoder3dstcount);
+       
+        FEHLog::printf("Desired Speed 1: %f\n", wheelspeedrpm1);
+        FEHLog::printf("Actual Speed 1: %f\n", actualwheelspeedrpm1);
+        FEHLog::printf("Desired Speed 2: %f\n", wheelspeedrpm2);
+        FEHLog::printf("Actual Speed 2: %f\n", actualwheelspeedrpm2);
+        FEHLog::printf("Desired Speed 3: %f\n", wheelspeedrpm3);
+        FEHLog::printf("Actual Speed 3: %f\n", actualwheelspeedrpm3);
+        FEHLog::printf("PID time: %f\n", time_diff_pid*.001);
+
+    }
+    void datatrack()
+    {
+        static FEHFile *motordatapntr = SD.FOpen("Motordata.txt", "w");
+        SD.FPrintf(motordatapntr,"%f\n%f\n%f\n",motor1_voltage,motor2_voltage,motor3_voltage);
 
     }
     private:
@@ -300,6 +348,8 @@ class robot{
     int index;
     float arm_angle=0;
     float waitime;
+    float testtime;
+    float actualwheelspeedrpm1,actualwheelspeedrpm2,actualwheelspeedrpm3;
 };
 
 
@@ -310,37 +360,113 @@ class robot{
 
 void ERCMain()
 {
+   // RCS.InitializeTouchMenu("0910B7XJM");
+    FEHLog::enableBLE(130);
     arm.SetMax(SERVO_MAX);
     arm.SetMin(SERVO_MIN);
     LCD.WriteLine("program started");
     robot robot;
-    
-    
    
-    while ((cds_cell.Value())>1.2);
+
+    FEHFile *filepntr = SD.FOpen("Test.txt","w");
+    SD.FPrintf(filepntr,"Test");
+    FEHLog::printf("Test");
+    SD.FCloseAll();
+
+     while ((cds_cell.Value())>1.2);
     {
         Sleep(50);
     }
-    robot.move(.3,300,10);
 
-    robot.move(19.4,120,6);
+
+    robot.move(3,30,10);
     robot.stopmot();
-    
-    robot.turn(120,1.5);
-    robot.armmove(39,1);
-    robot.stopmot();
+    robot.move(16,306,6);
+    robot.move(1,300,10);
+    compost.SetDegree(100);
+    Sleep(1.5);
+    compost.Off();
+    Sleep(10);
+    compost.SetDegree(60);
+    Sleep(1.5);
 
-    robot.move(5,60,5);
-    robot.stopmot();
+    compost.Off();
 
-    robot.armmove(10,.5);
-
-    robot.move(14.25,220,8);
-    robot.stopmot();
-
-    robot.turn(150,2);
+    robot.move(18,125,6);
 
 
+    // robot.move(2,110,5);
+    // robot.move(18,200,6);
+    // robot.stopmot();
+    // robot.turn(-149,1.25);
+    // robot.stopmot();
+    // robot.armmove(40,.75);
+    // robot.move(6,65,6);
+    // robot.stopmot();
+    // robot.armmove(0,.75);
+    // robot.turn(-140 ,1.25);
+
+
+    // robot.move(30,0,8);
+    // robot.stopmot();
+    // robot.move(1,180,7);
+    // robot.stopmot();
+    // robot.stopmot();
+    // robot.move(35,80,12);
+    // robot.stopmot();
+    // robot.move(2,270,5);
+    // robot.stopmot();
+    // robot.turn(35,1);
+    // robot.stopmot();
+    // robot.armmove(15,.75);
+    // robot.move(8,240,5);
+    // robot.stopmot();
+
+    // //anything past this is theoretical
+
+    // robot.turn(63,1);
+    // robot.stopmot();
+    // robot.armmove(0,.5);
+    // robot.move(19.5,60,6);
+    // robot.stopmot();
+    // robot.armmove(70,1);
+    // Sleep(50);
+    // robot.armmove(0,1);
+    // robot.move(3,240,6);
+    // robot.armmove(70,1);
+    // robot.move(7,60,6);
+    // robot.stopmot();
+    // Sleep(5000);
+    // robot.move(1,240,6);
+    // robot.stopmot();
+    // robot.armmove(0,1);
+    // robot.move(8,240,6);
+    // robot.stopmot();
+   
+
+
+    // int Lever = RCS.GetLever();
+
+    // if (Lever==0)
+    // {
+
+    // }
+    // if (Lever==1)
+    // {
+       
+    // }
+    // if (Lever==2)
+    // {
+       
+    // }
+
+
+
+
+
+   
+
+   
     while (1)
     {
 
