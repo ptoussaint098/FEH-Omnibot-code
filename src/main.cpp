@@ -1,3 +1,4 @@
+
 #include <FEH.h>
 #include <Arduino.h>
 #include <stdio.h>
@@ -24,8 +25,8 @@
 
 //PID Constants opne to be tweaked
 #define Pid_P_Constant  1
-#define Pid_D_Constant  0
-#define Pid_I_Constant  0
+#define Pid_D_Constant  .05
+#define Pid_I_Constant  .01
 //servo mins and maxes
 #define SERVO_MIN 500
 #define SERVO_MAX 1424
@@ -360,7 +361,7 @@ class robot{
 
 void ERCMain()
 {
-   // RCS.InitializeTouchMenu("0910B7XJM");
+    RCS.InitializeTouchMenu("0910B7XJM");
     FEHLog::enableBLE(130);
     arm.SetMax(SERVO_MAX);
     arm.SetMin(SERVO_MIN);
@@ -392,7 +393,8 @@ void ERCMain()
 
     compost.Off();
 
-    robot.move(18,125,6);
+    robot.move(20,125,8);
+
 
 
     // robot.move(2,110,5);
@@ -404,10 +406,10 @@ void ERCMain()
     // robot.move(6,65,6);
     // robot.stopmot();
     // robot.armmove(0,.75);
-    // robot.turn(-140 ,1.25);
+    // robot.turn(-90 ,1.25);
 
 
-    // robot.move(30,0,8);
+    // robot.move(20,90,7);
     // robot.stopmot();
     // robot.move(1,180,7);
     // robot.stopmot();
@@ -475,4 +477,5 @@ void ERCMain()
    
    
 }
+
 
