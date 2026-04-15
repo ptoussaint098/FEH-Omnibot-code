@@ -1,4 +1,3 @@
-
 #include <FEH.h>
 #include <Arduino.h>
 #include <stdio.h>
@@ -25,8 +24,8 @@
 
 //PID Constants opne to be tweaked
 #define Pid_P_Constant  1
-#define Pid_D_Constant  .05
-#define Pid_I_Constant  .01
+#define Pid_D_Constant  0
+#define Pid_I_Constant  0
 //servo mins and maxes
 #define SERVO_MIN 500
 #define SERVO_MAX 1424
@@ -55,6 +54,7 @@ class robot{
     public:
     void move(float dist, float angle, float speed)
     {
+        FEHLog::printf("Entered loop");
         encoder1.ResetCounts();
         encoder2.ResetCounts();
         encoder3.ResetCounts();
@@ -69,42 +69,39 @@ class robot{
         encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch);
         encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(dist/speed))*countsperinch);
 
-        if (encoder1dstcount==0)
+        if (encoder1dstcount<15)
         {
-            encoder1dstcount+=15;
+            encoder1dstcount+=20;
         }
-        else if (encoder2dstcount==0)
+        if (encoder2dstcount<15)
         {
-            encoder2dstcount+=15;
+            encoder2dstcount+=20;
         }
-        else if (encoder3dstcount==0)
+        if (encoder3dstcount<15)
         {
-            encoder3dstcount+=15;
+            encoder3dstcount+=20;
         }
 
        
 
         pidreset();
+        FEHLog::printf("Before Loop");
 
         while ((encoder1.Counts()<=encoder1dstcount)&&(encoder2.Counts()<=encoder2dstcount)&&(encoder3.Counts()<=encoder3dstcount))
         {
-           
+
+            FEHLog::printf("Motor voltage %f",(double)motor3_voltage);
             motor1.SetPercent(motor1_voltage);
             motor2.SetPercent(motor2_voltage);
             motor3.SetPercent(motor3_voltage);
-
-
-            Sleep(5);
-
-
-            pidcalc();
-
            
 
 
+            Sleep(25);
 
-            writefuncs();
-           
+
+
+             
         }
 
    
@@ -120,6 +117,7 @@ class robot{
         motor1_voltage = ((wheelspeedrpm1/motormaxrpm)*100);
         motor2_voltage = ((wheelspeedrpm2/motormaxrpm)*100);
         motor3_voltage = ((wheelspeedrpm3/motormaxrpm)*100);
+        FEHLog::printf("Desired Voltage1: %f, Desired Voltage2: %f, Desired Voltage3: %f \n",(double)motor1_voltage,(double)motor2_voltage,(double)motor3_voltage);
 
 
     }
@@ -145,46 +143,37 @@ class robot{
         pid_error2=((fabs(wheelspeedrpm2)*Pi*wheel_radius*2.0)/60.0)-actual_wheel_speed2;
         pid_error3=((fabs(wheelspeedrpm3)*Pi*wheel_radius*2.0)/60.0)-actual_wheel_speed3;
 
-        pid_sumoferrors1+=pid_error1*(time_diff_pid*.001);
-        pid_sumoferrors2+=pid_error2*(time_diff_pid*.001);
-        pid_sumoferrors3+=pid_error3*(time_diff_pid*.001);
+        pid_errorrpm1= (pid_error1*60)/(Pi*wheel_radius*2.0);
+        pid_errorrpm2= (pid_error2*60)/(Pi*wheel_radius*2.0);
+        pid_errorrpm3= (pid_error3*60)/(Pi*wheel_radius*2.0);
 
-        pid_Pterm1= Pid_P_Constant*pid_error1;
-        pid_Pterm2= Pid_P_Constant*pid_error2;
-        pid_Pterm3= Pid_P_Constant*pid_error3;
+        pid_volterr1=((pid_errorrpm1/motormaxrpm)*100.0);
+        pid_volterr2=((pid_errorrpm2/motormaxrpm)*100.0);
+        pid_volterr3=((pid_errorrpm3/motormaxrpm)*100.0);
+
+        FEHLog::printf("error %f", (double)pid_volterr3);
+
+        pid_sumoferrors1+=pid_volterr1*(time_diff_pid*.001);
+        pid_sumoferrors2+=pid_volterr2*(time_diff_pid*.001);
+        pid_sumoferrors3+=pid_volterr3*(time_diff_pid*.001);
+
+        pid_Pterm1= Pid_P_Constant*pid_volterr1;
+        pid_Pterm2= Pid_P_Constant*pid_volterr2;
+        pid_Pterm3= Pid_P_Constant*pid_volterr3;
 
         pid_Iterm1=Pid_I_Constant*pid_sumoferrors1;
         pid_Iterm2=Pid_I_Constant*pid_sumoferrors2;
         pid_Iterm3=Pid_I_Constant*pid_sumoferrors3;
 
-        pid_Dterm1=Pid_D_Constant*((pid_error1-pid_lasterror1)/(time_diff_pid*.001));
-        pid_Dterm2=Pid_D_Constant*((pid_error2-pid_lasterror2)/(time_diff_pid*.001));
-        pid_Dterm3=Pid_D_Constant*((pid_error3-pid_lasterror3)/(time_diff_pid*.001));
+        pid_Dterm1=Pid_D_Constant*((pid_volterr1-pid_lasterror1)/(time_diff_pid*.001));
+        pid_Dterm2=Pid_D_Constant*((pid_volterr2-pid_lasterror2)/(time_diff_pid*.001));
+        pid_Dterm3=Pid_D_Constant*((pid_volterr3-pid_lasterror3)/(time_diff_pid*.001));
        
-        if (base_voltage1>=0)
-        {
-            motor1_voltage=pid_Pterm1+pid_Iterm1+pid_Dterm1+base_voltage1;
-        }
-        else
-        {
-            motor1_voltage=base_voltage1-pid_Pterm1-pid_Iterm1-pid_Dterm1;    
-        }
-        if (base_voltage2>=0)
-        {
-            motor2_voltage=pid_Pterm2+pid_Iterm2+pid_Dterm2+base_voltage2;
-        }
-        else
-        {
-            motor2_voltage=base_voltage2-pid_Pterm2-pid_Iterm2-pid_Dterm2;    
-        }
-        if (base_voltage3>=0)
-        {
-            motor3_voltage=pid_Pterm3+pid_Iterm3+pid_Dterm3+base_voltage3;
-        }
-        else
-        {
-            motor3_voltage=base_voltage3-pid_Pterm3-pid_Iterm3-pid_Dterm3;    
-        }
+       
+        motor1_voltage=pid_Pterm1+pid_Iterm1+pid_Dterm1+base_voltage1;
+        motor2_voltage=pid_Pterm2+pid_Iterm2+pid_Dterm2+base_voltage2;
+        motor3_voltage=pid_Pterm3+pid_Iterm3+pid_Dterm3+base_voltage3;
+       
 
         //setting current values as previous values for next run
         last_time_pid=time_next_pid;
@@ -193,9 +182,9 @@ class robot{
         encoder2last=encoder2now;
         encoder3last=encoder3now;
 
-        pid_lasterror1=pid_error1;
-        pid_lasterror2=pid_error2;
-        pid_lasterror3=pid_error3;
+        pid_lasterror1=pid_volterr1;
+        pid_lasterror2=pid_volterr2;
+        pid_lasterror3=pid_volterr3;
 
     }
     void pidreset()
@@ -237,24 +226,24 @@ class robot{
 
         wheelspeedcalc(0,0,radpersec);
 
-        encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
-        encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
-        encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*3.85;
+        encoder1dstcount=((((fabs(wheelspeedrpm1)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*1.0;
+        encoder2dstcount=((((fabs(wheelspeedrpm2)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*1.0;
+        encoder3dstcount=((((fabs(wheelspeedrpm3)*wheel_radius*(2.0*Pi))/60)*(time))*countsperinch)-momentumfactor*1.0;
 
-        if (encoder1dstcount<15)
+        if (encoder1dstcount==15)
         {
             encoder1dstcount+=15;
         }
-        else if (encoder2dstcount<15)
+        if (encoder2dstcount==15)
         {
             encoder2dstcount+=15;
         }
-        else if (encoder3dstcount<15)
+        if (encoder3dstcount==15)
         {
             encoder3dstcount+=15;
         }
 
-        pidreset();
+
 
         while ((encoder1.Counts()<=encoder1dstcount)&&(encoder2.Counts()<=encoder2dstcount)&&(encoder3.Counts()<=encoder3dstcount))
         {
@@ -265,15 +254,43 @@ class robot{
 
             Sleep(5);
 
-            pidcalc();
-
-
-           
-           
-            writefuncs();
-           
         }
        
+
+    }
+    void gotopos(float x_pos, float y_pos, float heading)
+    {
+        RCSPose* class_position= RCS.RequestPosition();
+
+        diff_in_x=x_pos-class_position->x;
+        diff_in_y=y_pos-class_position->y;
+        diff_in_rot=heading-class_position->heading;
+
+        dstmove=sqrtf(pow(diff_in_x,2.0)+(pow(diff_in_y,2.0)));
+        if((atan2f(diff_in_y,diff_in_x))>=0)
+        {
+            rotmove=((atan2f(diff_in_y,diff_in_x))*(180/Pi))-6-class_position->heading;
+        }
+        else
+        {
+           rotmove=((atan2f(diff_in_y,diff_in_x))*(180/Pi))+360-6-class_position->heading;
+        }
+        if(rotmove>180)
+        {
+            rotmove-=360;
+        }
+        if(rotmove<-180)
+        {
+            rotmove+=360;
+        }
+       
+
+        FEHLog::printf("Projected Movement: %f\n",(double)dstmove);
+        FEHLog::printf("Projected Rot: %f\n",(double)rotmove);
+       
+        move(dstmove,rotmove,5);
+       
+        turn(rotmove,1.25);
 
     }
     void armmove(float angle, float time_to_complete)
@@ -306,21 +323,19 @@ class robot{
     }
     void stopmot()
     {
-        motor1.SetPercent(0.0);
-        motor2.SetPercent(0.0);
+       
         motor3.SetPercent(0.0);
+        motor2.SetPercent(0.0);
+        motor1.SetPercent(0.0);
+       
     }
     //Purely a function for testing values
     void writefuncs()
     {
        
-        FEHLog::printf("Desired Speed 1: %f\n", wheelspeedrpm1);
-        FEHLog::printf("Actual Speed 1: %f\n", actualwheelspeedrpm1);
-        FEHLog::printf("Desired Speed 2: %f\n", wheelspeedrpm2);
-        FEHLog::printf("Actual Speed 2: %f\n", actualwheelspeedrpm2);
-        FEHLog::printf("Desired Speed 3: %f\n", wheelspeedrpm3);
-        FEHLog::printf("Actual Speed 3: %f\n", actualwheelspeedrpm3);
-        FEHLog::printf("PID time: %f\n", time_diff_pid*.001);
+       
+        FEHLog::printf("Volt Error1: %f, Volt Error2: %f, Volt Error3: %f",(double)pid_volterr1,(double)pid_volterr2, (double)pid_volterr3);
+        FEHLog::printf("Motor 1 volt: %f, Motor 2 volt: %f, Motor 3 volt: %f,",(double)motor1_voltage,(double)motor2_voltage,(double)motor3_voltage);
 
     }
     void datatrack()
@@ -351,6 +366,14 @@ class robot{
     float waitime;
     float testtime;
     float actualwheelspeedrpm1,actualwheelspeedrpm2,actualwheelspeedrpm3;
+
+    float diff_in_x, diff_in_y, diff_in_rot;
+    float dstmove,rotmove;
+
+    float pid_errorrpm1,pid_errorrpm2,pid_errorrpm3;
+    float pid_volterr1, pid_volterr2, pid_volterr3;
+
+
 };
 
 
@@ -361,6 +384,9 @@ class robot{
 
 void ERCMain()
 {
+    int x_touch, y_touch;
+
+
     RCS.InitializeTouchMenu("0910B7XJM");
     FEHLog::enableBLE(130);
     arm.SetMax(SERVO_MAX);
@@ -373,8 +399,16 @@ void ERCMain()
     SD.FPrintf(filepntr,"Test");
     FEHLog::printf("Test");
     SD.FCloseAll();
+    WaitForFinalAction();
 
-     while ((cds_cell.Value())>1.2);
+    while (!LCD.Touch(&x_touch,&y_touch))
+    {
+
+    }
+
+   
+
+     while ((cds_cell.Value())>1.2)
     {
         Sleep(50);
     }
@@ -382,7 +416,9 @@ void ERCMain()
 
     robot.move(3,30,10);
     robot.stopmot();
-    robot.move(16,306,6);
+    robot.move(16,306,10);
+   
+    robot.stopmot();
     robot.move(1,300,10);
     compost.SetDegree(100);
     Sleep(1.5);
@@ -393,82 +429,100 @@ void ERCMain()
 
     compost.Off();
 
-    robot.move(20,125,8);
 
 
 
-    // robot.move(2,110,5);
-    // robot.move(18,200,6);
-    // robot.stopmot();
-    // robot.turn(-149,1.25);
-    // robot.stopmot();
-    // robot.armmove(40,.75);
-    // robot.move(6,65,6);
-    // robot.stopmot();
-    // robot.armmove(0,.75);
-    // robot.turn(-90 ,1.25);
+    robot.move(2,110,5);
+    robot.move(8.1,200,10);
+    robot.armmove(40,.6);
+    robot.stopmot();
+    robot.turn(-140,1.25);
+    robot.stopmot();
+   
+    robot.move(6,65,6);
+    robot.stopmot();
+    robot.armmove(0,.75);
+    robot.turn(150 ,1.25);
+    robot.stopmot();
+
+    Sleep(.5);
+    robot.move(8.3,202,5);
+    
+    robot.move(10.5,90,12);
+    robot.move(2.5,270,5);
+    robot.move(8,330,9);
+    robot.stopmot();
+    robot.turn(-125,1);
+    robot.move(26,180,10);
+    robot.move(2.5,0,5);
+    robot.turn(-155,2);
+
+    robot.move(41,58,12);
+    robot.move(1,240,5);
+    robot.stopmot();
+    robot.armmove(20,.5);
+
+    robot.move(3.0,235,7);
+    robot.turn(180,1.25);
+    robot.move(5,180,7);
+    robot.armmove(0,.3);
+    robot.move(15.75,0,11);
+     while (cds_cell.Value()>2.2)
+    {
+        Sleep(10);
+    }
+    if (cds_cell.Value()>1.6)
+    {
+        
+        robot.move(7,20,8);
+        robot.move(7,200,8);
+        
+    }
+    else if(cds_cell.Value()<=1.6)
+    {
+        
+        robot.move(7,340,8);
+        robot.move(7,160,8);
+        
+    }
+    robot.move(20,180,9);
 
 
-    // robot.move(20,90,7);
-    // robot.stopmot();
-    // robot.move(1,180,7);
-    // robot.stopmot();
-    // robot.stopmot();
-    // robot.move(35,80,12);
-    // robot.stopmot();
-    // robot.move(2,270,5);
-    // robot.stopmot();
-    // robot.turn(35,1);
-    // robot.stopmot();
-    // robot.armmove(15,.75);
-    // robot.move(8,240,5);
-    // robot.stopmot();
+    robot.move(1.5,0,7);
+    robot.turn(-112,2);
+    robot.move(11.5,60,10);
+    robot.armmove(0,.5);
+    robot.stopmot();
+    robot.armmove(70,.75);
+    robot.armmove(0,.75);
+    robot.move(1,240,5);
+    robot.armmove(70,.6);
+    robot.stopmot();
+    Sleep(5.1);
+    robot.move(4,60,5);
+    robot.stopmot();
+    robot.armmove(0,.5);
+    Sleep(20);
+    robot.armmove(20,.1);
+    robot.move(16,240,10);
+    robot.armmove(0,.1);
+    robot.turn(112,1);
+    robot.move(3,180,7);
 
-    // //anything past this is theoretical
 
-    // robot.turn(63,1);
-    // robot.stopmot();
-    // robot.armmove(0,.5);
-    // robot.move(19.5,60,6);
-    // robot.stopmot();
-    // robot.armmove(70,1);
-    // Sleep(50);
-    // robot.armmove(0,1);
-    // robot.move(3,240,6);
-    // robot.armmove(70,1);
-    // robot.move(7,60,6);
-    // robot.stopmot();
-    // Sleep(5000);
-    // robot.move(1,240,6);
-    // robot.stopmot();
-    // robot.armmove(0,1);
-    // robot.move(8,240,6);
-    // robot.stopmot();
+    robot.move(15.75,0,11);
+
+
+    
+    
+
+    
+   
    
 
 
-    // int Lever = RCS.GetLever();
 
-    // if (Lever==0)
-    // {
-
-    // }
-    // if (Lever==1)
-    // {
-       
-    // }
-    // if (Lever==2)
-    // {
-       
-    // }
-
-
-
-
-
-   
-
-   
+    robot.stopmot();
     while (1)
     {
 
@@ -477,5 +531,3 @@ void ERCMain()
    
    
 }
-
-

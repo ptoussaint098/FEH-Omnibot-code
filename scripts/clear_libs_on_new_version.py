@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import os
 import re
@@ -13,7 +14,7 @@ Import("env")  # PlatformIO injects this in extra_scripts
 
 PKG = "osu-eed/ERC2"
 GUARD_ENV = "ERC2_AUTOUPDATE_ALREADY_RAN"
-LIBDEPS_DIR = Path(".pio") / "libdeps"
+LIBDEPS_DIR = Path(".pio") / "libdeps" / "megaatmega2560" / "ERC2"
 
 
 def log(msg: str):
@@ -74,6 +75,8 @@ def parse_installed_version_from_pkg_list(pkg: str, pioenv: str) -> str | None:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding='utf-8',
+            errors='replace',
             check=False,
         )
     except Exception as e:
@@ -136,10 +139,38 @@ def main():
         log("Version compare failed; skipping auto-update.")
         return
 
-    log("Newer version detected. Clearing libdeps to force re-download...")
+    log(f"Newer version detected ({installed} -> {latest}). Updating...")
 
-    # 1) rm -rf .pio/libdeps
+    # rm -rf .pio/libdeps
     if LIBDEPS_DIR.exists():
         shutil.rmtree(LIBDEPS_DIR, ignore_errors=True)
+
+    # PlatformIO caches HTTP responses (package metadata + download URLs) in
+    # ~/.platformio/.cache/http/. These cached entries can hold stale version
+    # info even after a new release is published to the registry. We need to
+    # purge any ERC2-related cache entries so PlatformIO resolves the new version.
+    pkg_name = PKG.split("/")[-1].lower()
+    pio_http_cache = Path.home() / ".platformio" / ".cache" / "http"
+    if pio_http_cache.is_dir():
+        for entry in pio_http_cache.iterdir():
+            try:
+                content = entry.read_text(encoding="utf-8", errors="ignore")
+                if pkg_name in content.lower():
+                    log(f"Clearing stale cache entry: {entry.name}")
+                    entry.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    # Also clear the downloads cache in case old tarballs are cached
+    pio_dl_cache = Path.home() / ".platformio" / ".cache" / "downloads"
+    if pio_dl_cache.is_dir():
+        for entry in pio_dl_cache.iterdir():
+            try:
+                if pkg_name in entry.name.lower():
+                    log(f"Clearing cached download: {entry.name}")
+                    entry.unlink(missing_ok=True)
+            except Exception:
+                pass
+
 
 main()
