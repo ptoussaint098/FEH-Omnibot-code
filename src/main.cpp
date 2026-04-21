@@ -97,7 +97,6 @@ class robot{
            
 
 
-            Sleep(25);
 
 
 
@@ -252,7 +251,7 @@ class robot{
             motor2.SetPercent(motor2_voltage);
             motor3.SetPercent(motor3_voltage);
 
-            Sleep(5);
+            
 
         }
        
@@ -265,6 +264,14 @@ class robot{
         diff_in_x=x_pos-class_position->x;
         diff_in_y=y_pos-class_position->y;
         diff_in_rot=heading-class_position->heading;
+        
+
+        FEHLog::printf("x: %f\n",class_position->x);
+        FEHLog::printf("y: %f\n",class_position->y);
+        FEHLog::printf("rot: %f\n",class_position->heading);
+        FEHLog::printf("Diff in x: %f\n",diff_in_x);
+        FEHLog::printf("Diff in Y: %f\n",diff_in_y);
+        FEHLog::printf("Diff in rot: %f\n",diff_in_rot);
 
         dstmove=sqrtf(pow(diff_in_x,2.0)+(pow(diff_in_y,2.0)));
         if((atan2f(diff_in_y,diff_in_x))>=0)
@@ -285,12 +292,11 @@ class robot{
         }
        
 
-        FEHLog::printf("Projected Movement: %f\n",(double)dstmove);
-        FEHLog::printf("Projected Rot: %f\n",(double)rotmove);
+        FEHLog::printf("Projected Movement: %f\n",dstmove);
+        FEHLog::printf("Projected Rot: %f\n",rotmove);
        
         move(dstmove,rotmove,5);
        
-        turn(rotmove,1.25);
 
     }
     void armmove(float angle, float time_to_complete)
@@ -302,7 +308,7 @@ class robot{
             {
                 arm_angle+=1.0;
                 arm.SetDegree(arm_angle);
-                LCD.WriteLine(waitime);
+                
                
                 Sleep(waitime);
             }
@@ -315,7 +321,7 @@ class robot{
                 arm_angle-=1.0;
                 arm.SetDegree(arm_angle);
                 Sleep(waitime);
-                LCD.WriteLine(waitime);
+                
             }
 
         }
@@ -385,10 +391,12 @@ class robot{
 void ERCMain()
 {
     int x_touch, y_touch;
+    char region_char;
+    int region;
 
-
-    RCS.InitializeTouchMenu("0910B7XJM");
     FEHLog::enableBLE(130);
+    RCS.InitializeTouchMenu("0910B7XJM");
+    
     arm.SetMax(SERVO_MAX);
     arm.SetMin(SERVO_MIN);
     LCD.WriteLine("program started");
@@ -399,16 +407,38 @@ void ERCMain()
     SD.FPrintf(filepntr,"Test");
     FEHLog::printf("Test");
     SD.FCloseAll();
+    region_char=RCS.CurrentRegionLetter();
+    switch (region_char) {
+        case 'A':
+            region = 1;
+            break;
+        case 'B':
+            region = 2;
+            break;
+        case 'C':
+            region = 3;
+            break;
+        case 'D':
+            region = 4;
+            break;
+        case 'E':
+            region = 5;
+            break;
+        case 'F':
+            region = 6;
+            break;
+        case 'G':
+            region = 7;
+            break;
+        case 'H':
+            region = 8;
+            break;
+    }
     WaitForFinalAction();
 
-    while (!LCD.Touch(&x_touch,&y_touch))
-    {
+    
 
-    }
-
-   
-
-     while ((cds_cell.Value())>1.2)
+    while ((cds_cell.Value())>1.2)
     {
         Sleep(50);
     }
@@ -416,10 +446,18 @@ void ERCMain()
 
     robot.move(3,30,10);
     robot.stopmot();
-    robot.move(16,306,10);
+    if (region==5||region==8)
+    {
+        robot.move(16,304,12);
+    }
+    else
+    {
+        robot.move(16,306,12);
+    }
+
    
     robot.stopmot();
-    robot.move(1,300,10);
+    robot.move(1,300,16);
     compost.SetDegree(100);
     Sleep(1.5);
     compost.Off();
@@ -432,41 +470,56 @@ void ERCMain()
 
 
 
-    robot.move(2,110,5);
-    robot.move(8.1,200,10);
-    robot.armmove(40,.6);
+    robot.move(2,110,7);
+    robot.move(8,200,10);
+
+    
+    robot.armmove(39,.6);
     robot.stopmot();
-    robot.turn(-140,1.25);
+    if ( region==7||region==8||region==5)
+    {
+        robot.turn(-136,1.25);
+    }
+    else
+    {
+        robot.turn(-137,1.25);
+    }
     robot.stopmot();
-   
-    robot.move(6,65,6);
+    robot.move(6.5,64.5,14);
     robot.stopmot();
     robot.armmove(0,.75);
     robot.turn(150 ,1.25);
     robot.stopmot();
 
     Sleep(.5);
-    robot.move(8.3,202,5);
     
-    robot.move(10.5,90,12);
+    robot.move(10.5,202,12);
+    
+    
+    int window = RCS.isWindowOpen();
+    
+    robot.move(12.5,90,12);
     robot.move(2.5,270,5);
-    robot.move(8,330,9);
+    robot.move(8,330,14);
     robot.stopmot();
     robot.turn(-125,1);
-    robot.move(26,180,10);
-    robot.move(2.5,0,5);
+    robot.move(27,180,12);
+    robot.move(2.5,0,7);
     robot.turn(-155,2);
 
-    robot.move(41,58,12);
+    robot.move(47,59,17.25);
+    robot.stopmot();
+    Sleep(500);
     robot.move(1,240,5);
     robot.stopmot();
-    robot.armmove(20,.5);
+    robot.armmove(20,.75);
 
-    robot.move(3.0,235,7);
+    robot.move(2.25,235,8);
     robot.turn(180,1.25);
-    robot.move(5,180,7);
+    robot.move(6,180,9);
     robot.armmove(0,.3);
-    robot.move(15.75,0,11);
+    robot.move(16.25,0,11);
+    LCD.WriteLine(cds_cell.Value());
      while (cds_cell.Value()>2.2)
     {
         Sleep(10);
@@ -474,51 +527,53 @@ void ERCMain()
     if (cds_cell.Value()>1.6)
     {
         
-        robot.move(7,20,8);
-        robot.move(7,200,8);
+        robot.move(8,20,10);
+        robot.move(8,200,10);
         
     }
     else if(cds_cell.Value()<=1.6)
     {
         
-        robot.move(7,340,8);
-        robot.move(7,160,8);
+        robot.move(8,340,8);
+        robot.move(8,160,8);
         
     }
     robot.move(20,180,9);
 
 
-    robot.move(1.5,0,7);
-    robot.turn(-112,2);
-    robot.move(11.5,60,10);
+    robot.move(3,0,7);
+    robot.turn(-103,2);
+    robot.move(15.75,60,10);
     robot.armmove(0,.5);
     robot.stopmot();
-    robot.armmove(70,.75);
-    robot.armmove(0,.75);
+    robot.armmove(70,.5);
+    robot.armmove(0,.5);
     robot.move(1,240,5);
     robot.armmove(70,.6);
     robot.stopmot();
     Sleep(5.1);
-    robot.move(4,60,5);
+    robot.move(5,60,5);
     robot.stopmot();
     robot.armmove(0,.5);
     Sleep(20);
-    robot.armmove(20,.1);
-    robot.move(16,240,10);
+    robot.armmove(30,.1);
+    robot.move(15.5,240,10);
     robot.armmove(0,.1);
-    robot.turn(112,1);
-    robot.move(3,180,7);
+    robot.turn(105,1);
+    robot.move(6,180,7);
+    robot.move(9.5,0,10);
+    robot.turn(-30,.5);
+    robot.move(6,120,5);
+    robot.move(18.5,30,12);
+    robot.move(2.5,210,7);
+    robot.move(2.5,300,7);
+    robot.turn(30,.5);
+    robot.move(25,180,8);
+    robot.move(3.5,0,7);
+    robot.turn(90,1);
+    robot.move(50,0,12);
 
 
-    robot.move(15.75,0,11);
-
-
-    
-    
-
-    
-   
-   
 
 
 
