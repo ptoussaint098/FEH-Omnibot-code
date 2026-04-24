@@ -85,22 +85,15 @@ class robot{
        
 
         pidreset();
-        FEHLog::printf("Before Loop");
+       
 
         while ((encoder1.Counts()<=encoder1dstcount)&&(encoder2.Counts()<=encoder2dstcount)&&(encoder3.Counts()<=encoder3dstcount))
         {
 
-            FEHLog::printf("Motor voltage %f",(double)motor3_voltage);
             motor1.SetPercent(motor1_voltage);
             motor2.SetPercent(motor2_voltage);
             motor3.SetPercent(motor3_voltage);
-           
-
-
-
-
-
-             
+   
         }
 
    
@@ -260,18 +253,16 @@ class robot{
     void gotopos(float x_pos, float y_pos, float heading)
     {
         RCSPose* class_position= RCS.RequestPosition();
+        if (class_position== nullptr)
+        {
+            return;
+        }
 
         diff_in_x=x_pos-class_position->x;
         diff_in_y=y_pos-class_position->y;
         diff_in_rot=heading-class_position->heading;
         
 
-        FEHLog::printf("x: %f\n",class_position->x);
-        FEHLog::printf("y: %f\n",class_position->y);
-        FEHLog::printf("rot: %f\n",class_position->heading);
-        FEHLog::printf("Diff in x: %f\n",diff_in_x);
-        FEHLog::printf("Diff in Y: %f\n",diff_in_y);
-        FEHLog::printf("Diff in rot: %f\n",diff_in_rot);
 
         dstmove=sqrtf(pow(diff_in_x,2.0)+(pow(diff_in_y,2.0)));
         if((atan2f(diff_in_y,diff_in_x))>=0)
@@ -446,46 +437,47 @@ void ERCMain()
 
     robot.move(3,30,10);
     robot.stopmot();
-    if (region==5||region==8)
-    {
-        robot.move(16,304,12);
-    }
-    else
-    {
-        robot.move(16,306,12);
-    }
+    robot.move(9,300,10);
+    robot.turn(30,.5);
+    robot.move(6,0,7);
+    robot.move(.01,180,4);
+    robot.move(4.5,270,10);
 
-   
     robot.stopmot();
-    robot.move(1,300,16);
-    compost.SetDegree(100);
+    // robot.move(1,270,16);
+    // robot.move(1,270,10);
+    compost.SetDegree(180);
     Sleep(1.5);
     compost.Off();
     Sleep(10);
-    compost.SetDegree(60);
+    compost.SetDegree(0);
     Sleep(1.5);
 
     compost.Off();
+    robot.stopmot();
+    robot.move(4,270,7);
 
 
 
 
-    robot.move(2,110,7);
-    robot.move(8,200,10);
+    robot.move(3.5,90,7);
+    if (region==7)
+    {
+        robot.move(8.2,180,10);
+    }
+    else
+    {
+        robot.move(8.0,180,10);
+    }
+    
 
     
     robot.armmove(39,.6);
     robot.stopmot();
-    if ( region==7||region==8||region==5)
-    {
-        robot.turn(-136,1.25);
-    }
-    else
-    {
-        robot.turn(-137,1.25);
-    }
+    robot.turn(-162,1.25);
+    
     robot.stopmot();
-    robot.move(6.5,64.5,14);
+    robot.move(6.5,64,14);
     robot.stopmot();
     robot.armmove(0,.75);
     robot.turn(150 ,1.25);
@@ -493,7 +485,7 @@ void ERCMain()
 
     Sleep(.5);
     
-    robot.move(10.5,202,12);
+    robot.move(10.5,187,12);
     
     
     int window = RCS.isWindowOpen();
@@ -503,22 +495,30 @@ void ERCMain()
     robot.move(8,330,14);
     robot.stopmot();
     robot.turn(-125,1);
-    robot.move(27,180,12);
+    robot.move(30,180,12);
+    robot.move(3,180,5);
     robot.move(2.5,0,7);
     robot.turn(-155,2);
 
     robot.move(47,59,17.25);
     robot.stopmot();
     Sleep(500);
-    robot.move(1,240,5);
+    robot.move(1,240,7);
     robot.stopmot();
-    robot.armmove(20,.75);
+    robot.armmove(20,.5);
 
-    robot.move(2.25,235,8);
+    robot.move(2.1,235,10);
     robot.turn(180,1.25);
-    robot.move(6,180,9);
-    robot.armmove(0,.3);
-    robot.move(16.25,0,11);
+    robot.move(5.9,180,12);
+    robot.armmove(0,.2);
+    if (region==5)
+    {
+        robot.move(16.5,0,12);
+    }
+    else
+    {
+        robot.move(16.25,0,12);
+    }
     LCD.WriteLine(cds_cell.Value());
      while (cds_cell.Value()>2.2)
     {
@@ -527,23 +527,34 @@ void ERCMain()
     if (cds_cell.Value()>1.6)
     {
         
-        robot.move(8,20,10);
-        robot.move(8,200,10);
+        robot.move(8,15,12);
+        robot.move(8,195,12);
         
     }
     else if(cds_cell.Value()<=1.6)
     {
         
-        robot.move(8,340,8);
-        robot.move(8,160,8);
+        robot.move(8,345,12);
+        robot.move(8,165,12);
         
     }
-    robot.move(20,180,9);
+    robot.move(20,180,12);
 
-
-    robot.move(3,0,7);
-    robot.turn(-103,2);
-    robot.move(15.75,60,10);
+   int lever= RCS.GetLever();
+    robot.move(4,0,7);
+    if (lever==1)
+    {
+        robot.turn(-105,2);
+    }
+    else if (lever==0)
+    {
+        robot.turn(-98,2);
+    }
+    else if (lever==2)
+    {
+        robot.turn(-107,2);
+    }
+    robot.move(14.75,60,10);
     robot.armmove(0,.5);
     robot.stopmot();
     robot.armmove(70,.5);
@@ -552,26 +563,28 @@ void ERCMain()
     robot.armmove(70,.6);
     robot.stopmot();
     Sleep(5.1);
-    robot.move(5,60,5);
+    robot.move(4.5,60,5);
     robot.stopmot();
     robot.armmove(0,.5);
     Sleep(20);
-    robot.armmove(30,.1);
-    robot.move(15.5,240,10);
+    robot.armmove(40,.1);
+    robot.move(14,240,10);
     robot.armmove(0,.1);
     robot.turn(105,1);
     robot.move(6,180,7);
     robot.move(9.5,0,10);
-    robot.turn(-30,.5);
-    robot.move(6,120,5);
-    robot.move(18.5,30,12);
-    robot.move(2.5,210,7);
-    robot.move(2.5,300,7);
-    robot.turn(30,.5);
-    robot.move(25,180,8);
-    robot.move(3.5,0,7);
+    robot.turn(-90,.5);
+    robot.move(5,180,5);
+    robot.move(18.5,90,12);
+    robot.move(2.5,270,7);
+    robot.move(2.5,0,7);
+    robot.turn(75,.5);
+    robot.move(25,180,10);
+    robot.move(3,0,8);
     robot.turn(90,1);
-    robot.move(50,0,12);
+    robot.move(40,0,14);
+    robot.turn(30,.5);
+    robot.move(12,0,14);
 
 
 
